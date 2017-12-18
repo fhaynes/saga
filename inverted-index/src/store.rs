@@ -1,6 +1,6 @@
-use rusqlite;
-
 use std::path::Path;
+
+use rusqlite;
 
 use document::Document;
 use index::InvertedIndexError;

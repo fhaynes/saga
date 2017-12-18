@@ -14,7 +14,7 @@ use stores::sqlite::queries::*;
 #[derive(Clone, Debug)]
 pub enum StorageEngine {
     SQLite,
-    Filesystem
+    Filesystem,
 }
 
 pub struct Manager {
@@ -24,11 +24,17 @@ pub struct Manager {
     segments: Vec<(mpsc::Sender<IndexCommand>, IndexWorker)>,
     receiver: mpsc::Receiver<IndexCommand>,
     workers: u16,
-    storage_engine: StorageEngine
+    storage_engine: StorageEngine,
 }
 
 impl Manager {
-    pub fn new<S: Into<String>>(name: S, data_directory: PathBuf, chan: mpsc::Receiver<IndexCommand>, storage_engine: StorageEngine, shard_type: shard::ShardType) -> Result<thread::JoinHandle<()>, io::Error> {
+    pub fn new<S: Into<String>>(
+        name: S,
+        data_directory: PathBuf,
+        chan: mpsc::Receiver<IndexCommand>,
+        storage_engine: StorageEngine,
+        shard_type: shard::ShardType,
+    ) -> Result<thread::JoinHandle<()>, io::Error> {
         let mut mgr = Manager {
             index_name: name.into(),
             data_directory: data_directory,
@@ -36,7 +42,7 @@ impl Manager {
             receiver: chan,
             workers: constants::DEFAULT_INDEX_STORE_WORKERS,
             storage_engine: storage_engine.clone(),
-            shard_type: shard_type
+            shard_type: shard_type,
         };
         mgr.create_data_directory()?;
         let mut existing_segments = mgr.list_segments()?;
@@ -53,53 +59,62 @@ impl Manager {
             let (tx, rx): (mpsc::Sender<IndexCommand>, mpsc::Receiver<IndexCommand>) = mpsc::channel();
             let worker = IndexWorker::new(p, rx);
             self.segments.push((tx, worker));
-            println!("Worker spawned!");
         }
 
         loop {
             match self.receiver.recv() {
                 Ok(msg) => {
                     match msg {
-                        IndexCommand::IndexDocument { document, response_channel } => {
+                        IndexCommand::IndexDocument {
+                            document,
+                            response_channel,
+                        } => {
                             println!("Received IndexCommand");
                             match response_channel {
                                 Some(ch) => {
                                     match ch.send(true) {
                                         Ok(r) => {
                                             println!("Response sent");
-                                        },
+                                        }
                                         Err(e) => {
                                             println!("Error sending response: {}", e);
                                         }
                                     }
-                                },
+                                }
                                 None => {}
                             }
-                        },
+                        }
                         IndexCommand::Stats { response_channel } => {
                             match response_channel.send(IndexStats) {
-                                Ok(r) => {},
+                                Ok(r) => {}
                                 Err(e) => {}
                             }
-                        },
+                        }
                         IndexCommand::Ready { response_channel } => {
                             match response_channel.send(true) {
-                                Ok(r) => {},
+                                Ok(r) => {}
                                 Err(e) => {}
                             }
                         }
                     }
-                },
+                }
                 Err(e) => {
                     println!("RecvError: {}", e);
-                },
+                }
             }
         }
     }
 
     fn list_segments(&self) -> io::Result<Vec<PathBuf>> {
         let mut results = vec![];
-        let segment_path: PathBuf = [self.data_directory.to_str().unwrap(), "indices", &self.index_name, "segments", &self.shard_type.to_string()].iter().collect();
+        let segment_path: PathBuf = [
+            self.data_directory.to_str().unwrap(),
+            "indices",
+            &self.index_name,
+            "segments",
+            &self.shard_type.to_string(),
+        ].iter()
+            .collect();
         for entry in fs::read_dir(segment_path)? {
             let entry = entry?;
             let dir = entry.path();
@@ -111,27 +126,44 @@ impl Manager {
     fn initialize_segments(&self) {
         for num in 0..self.workers {
             let filename = format!("{}.db", num.to_string());
-            let segment_path: PathBuf = [self.data_directory.to_str().unwrap(), "indices", &self.index_name, "segments", &self.shard_type.to_string(), &filename].iter().collect();
+            let segment_path: PathBuf = [
+                self.data_directory.to_str().unwrap(),
+                "indices",
+                &self.index_name,
+                "segments",
+                &self.shard_type.to_string(),
+                &filename,
+            ].iter()
+                .collect();
             match rusqlite::Connection::open(segment_path) {
                 Ok(conn) => {
                     for query in QUERIES_INITIALIZE_INDEX_DB {
                         match conn.execute(query, &[]) {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => {
-                                println!("There was an error executing query: {:?}. Error was: {:?}", query, e);
+                                println!(
+                                    "There was an error executing query: {:?}. Error was: {:?}",
+                                    query,
+                                    e
+                                );
                             }
                         }
                     }
-                },
-                Err(e) => {
-
-                },
+                }
+                Err(e) => {}
             }
         }
     }
 
     fn create_data_directory(&self) -> io::Result<()> {
-        let segment_path: PathBuf = [self.data_directory.to_str().unwrap(), "indices", &self.index_name, "segments", &self.shard_type.to_string()].iter().collect();
+        let segment_path: PathBuf = [
+            self.data_directory.to_str().unwrap(),
+            "indices",
+            &self.index_name,
+            "segments",
+            &self.shard_type.to_string(),
+        ].iter()
+            .collect();
         fs::create_dir_all(segment_path)?;
         Ok(())
     }
@@ -139,19 +171,17 @@ impl Manager {
 
 pub struct IndexWorker {
     thread: thread::JoinHandle<()>,
-    database_path: PathBuf
+    database_path: PathBuf,
 }
 
 impl IndexWorker {
     pub fn new(path: PathBuf, rx: mpsc::Receiver<IndexCommand>) -> IndexWorker {
-        let thread = thread::spawn(move || {
-            loop {
-                let command = rx.recv();
-            }
+        let thread = thread::spawn(move || loop {
+            let command = rx.recv();
         });
         IndexWorker {
             thread: thread,
-            database_path: path
+            database_path: path,
         }
     }
 }
@@ -159,14 +189,10 @@ impl IndexWorker {
 pub enum IndexCommand {
     IndexDocument {
         document: Document,
-        response_channel: Option<mpsc::Sender<bool>>
+        response_channel: Option<mpsc::Sender<bool>>,
     },
-    Stats {
-        response_channel: mpsc::Sender<IndexStats>
-    },
-    Ready {
-        response_channel: mpsc::Sender<bool>
-    }
+    Stats { response_channel: mpsc::Sender<IndexStats>, },
+    Ready { response_channel: mpsc::Sender<bool>, },
 }
 
 pub struct IndexStats;
@@ -179,17 +205,21 @@ mod tests {
     #[test]
     fn test_create_manager() {
         let (tx, rx): (mpsc::Sender<IndexCommand>, mpsc::Receiver<IndexCommand>) = mpsc::channel();
-        match Manager::new("test_idx", PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY), rx, StorageEngine::SQLite, shard::ShardType::Primary) {
+        match Manager::new(
+            "test_idx",
+            PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY),
+            rx,
+            StorageEngine::SQLite,
+            shard::ShardType::Primary,
+        ) {
             Ok(join_handle) => {
                 println!("Join handle is: {:?}", join_handle);
                 let (sub_tx, sub_rx): (mpsc::Sender<bool>, mpsc::Receiver<bool>) = mpsc::channel();
-                let test_message = IndexCommand::Ready{
-                    response_channel: sub_tx
-                };
+                let test_message = IndexCommand::Ready { response_channel: sub_tx };
                 tx.send(test_message);
                 let response = sub_rx.recv();
                 println!("Response received: {:?}", response);
-            },
+            }
             Err(e) => {
                 assert!(false);
             }

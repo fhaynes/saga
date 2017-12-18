@@ -11,27 +11,22 @@ use store::IndexStore;
 pub struct SQLiteStore {
     index_name: String,
     data_path: String,
-    connection: rusqlite::Connection
+    connection: rusqlite::Connection,
 }
 
-impl SQLiteStore {
-    
-}
+impl SQLiteStore {}
 
 impl IndexStore for SQLiteStore {
-
     /// Opens an IndexStore or creates a new one
     fn open<S: Into<String>>(name: S, path: &Path) -> Result<Self, rusqlite::Error> {
         match rusqlite::Connection::open(path) {
             Ok(conn) => {
-                Ok(
-                    SQLiteStore {
-                        index_name: name.into(),
-                        data_path: String::from(path.to_str().unwrap()),
-                        connection: conn
-                    }
-                )
-            },
+                Ok(SQLiteStore {
+                    index_name: name.into(),
+                    data_path: String::from(path.to_str().unwrap()),
+                    connection: conn,
+                })
+            }
             Err(e) => {
                 return Err(e);
             }
