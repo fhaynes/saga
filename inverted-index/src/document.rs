@@ -41,7 +41,7 @@ impl Document {
     ///
     /// # Arguments
     ///
-    /// * `r` - A String that is the raw content to add to the Document
+    /// * `r` - A generic that can be turned into a string. Will be the raw content to add to the Document
     ///
     /// # Example
     ///
@@ -49,8 +49,8 @@ impl Document {
     /// use inverted_index::document::Document;
     /// let document = Document::new(0, "").raw("This is a test");
     /// ```
-    pub fn raw(mut self, r: String) -> Document {
-        self.raw = r;
+    pub fn raw<S: Into<String>>(mut self, r: S) -> Document {
+        self.raw = r.into();
         self
     }
 
@@ -60,13 +60,6 @@ impl Document {
     ///
     /// * `doc` - Mutable reference to the Document we want to process
     ///
-    /// # Example
-    ///
-    /// ```
-    /// use inverted_index::document::Document;
-    /// let document = Document::new(0, "This is a test");
-    /// Document::process(&mut document);
-    /// ```
     fn process(doc: &mut Document) {
         let results = split_on_whitespace(&doc.raw);
         for (term, offset) in results {
@@ -98,6 +91,7 @@ impl FromStr for Document {
     ///
     /// ```
     /// use inverted_index::document::Document;
+    /// use std::str::FromStr;
     /// let document = Document::from_str("This is a test");
     /// ```
     type Err = DocumentError;
@@ -137,10 +131,10 @@ impl DocumentError {
     /// # Example
     ///
     /// ```
-    /// use inverted_index::document::Document;
+    /// use inverted_index::document::DocumentError;
     /// let document_error = DocumentError::new("Invalid character in Document!");
     /// ```
-    fn new(msg: &str) -> DocumentError {
+    pub fn new(msg: &str) -> DocumentError {
         DocumentError { details: msg.to_string() }
     }
 }
@@ -155,11 +149,12 @@ impl DocumentError {
 /// # Example
 ///
 /// ```
-/// let terms = split_on_whitespace("This is a test");
+/// use inverted_index::document;
+/// let terms = document::split_on_whitespace("This is a test");
 /// ```
 ///
-/// The result Vector would be: [("This", 0), ("is", 1), ("a", 2), ("test", 3)]
-fn split_on_whitespace(value: &str) -> Vec<(String, u64)> {
+/// The resulting Vector would be: [("This", 0), ("is", 1), ("a", 2), ("test", 3)]
+pub fn split_on_whitespace(value: &str) -> Vec<(String, u64)> {
     let mut result: Vec<(String, u64)> = Vec::new();
     for (i, term) in value.split_whitespace().enumerate() {
         result.push((term.to_owned(), i as u64));
