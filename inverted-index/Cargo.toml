@@ -1,0 +1,13 @@
+[package]
+name = "inverted_index"
+version = "0.1.0"
+authors = ["Fletcher Haynes <fletcher@unity3d.com>"]
+
+[dependencies]
+rust-stemmers = "*"
+regex = "*"
+error-chain = "*"
+
+[dependencies.rusqlite]
+version = "*"
+features = ["bundled", "serde_json"]

@@ -1,0 +1,11 @@
+[package]
+name = "web"
+version = "0.1.0"
+authors = ["Fletcher Haynes <fletcher@unity3d.com>"]
+
+[dependencies]
+serde = "1.0.24"
+serde_derive = "1.0.24"
+serde_json = "1.0.8"
+futures = "0.1.17"
+hyper = "0.11"
