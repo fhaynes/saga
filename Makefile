@@ -10,7 +10,7 @@ debug: clean
 test:
 	$(MAKE) -C main test
 	$(MAKE) -C web test
-	$(MAKE) -C inverted_index test
+	$(MAKE) -C inverted-index test
 
 install:
 	mv main/binaries/saga /usr/local/bin
