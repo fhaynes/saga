@@ -12,22 +12,63 @@ use shard;
 use stores::sqlite::queries::*;
 
 #[derive(Clone, Debug)]
+/// Enum that represents the various StorageEngines that can be used to store the InvertedIndexes
 pub enum StorageEngine {
+    /// Uses embedded SQLite databases
     SQLite,
+    /// Uses raw files
     Filesystem,
 }
 
+/// A Manager instance represents a Shard of an Index on a Node and provides an abstraction around
+/// all the functionality required to read/write to the storage backend.
+/// 
+/// # Example
+/// 
+/// * Assume we have a cluster of three `Nodes`, A, B and C.
+/// * Assume we have an Index with 1 Primary Shard and 1 Replica Shard
+/// The Primary Shard might live on `Node` A and the `Replica` `Shard` on Node B. On `Node` A, the
+/// `Shard` might have multiple flat files or SQLite DB files, being written to or read from by 
+/// multiple threads, but the `Manager` handles coordinating the worker threads and all other resources.
+/// 
 pub struct Manager {
+    /// Name of the `InvertedIndex` this Manager is responsible for
     index_name: String,
+    /// `Shard` type that this Manager manages
     shard_type: shard::ShardType,
+    /// Base `Path` for where this Manager will keep all its data
     data_directory: PathBuf,
+    /// Vector of all the Segments that this Manager manages
     segments: Vec<(mpsc::Sender<IndexCommand>, IndexWorker)>,
+    /// Receiver end of the channel by which other resources can send this Manager messages
     receiver: mpsc::Receiver<IndexCommand>,
+    /// Number of workers this Manager has, which usually is a 1:1 ratio with threads
     workers: u16,
+    /// The backing store for this Manager
     storage_engine: StorageEngine,
 }
 
 impl Manager {
+    /// Creates and returns a new Manager
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - Anything that can be converted into a String to be the name of the `InvertedIndex`
+    /// * `data_directory` - Root directory that holds all the data for this Manager
+    /// * `chan` - Channel by which the Manager can receive commands
+    /// * `storage_engine` - The storage engine backing this Manager
+    /// * `shard_type` - The type of `Shard` this Manager 
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use std::path::PathBuf;
+    /// use inverted_index::{shard,constants};
+    /// use inverted_index::manager::*;
+    /// use std::sync::mpsc;
+    /// let (tx, rx): (mpsc::Sender<IndexCommand>, mpsc::Receiver<IndexCommand>) = mpsc::channel();
+    /// let mgr = Manager::new("test_idx", PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY), rx, StorageEngine::SQLite, shard::ShardType::Primary);
+    /// ```
     pub fn new<S: Into<String>>(
         name: S,
         data_directory: PathBuf,
@@ -105,6 +146,8 @@ impl Manager {
         }
     }
 
+    /// Lists all the segments of a Shard, which translates to just an enumeration of the files
+    /// in the directory at the time
     fn list_segments(&self) -> io::Result<Vec<PathBuf>> {
         let mut results = vec![];
         let segment_path: PathBuf = [
@@ -123,6 +166,8 @@ impl Manager {
         Ok(results)
     }
 
+    /// This initializes the needed SQLite databases. NOTE: This should be abstracted more, but is currently
+    /// a work in progress.
     fn initialize_segments(&self) {
         for num in 0..self.workers {
             let filename = format!("{}.db", num.to_string());
@@ -155,6 +200,7 @@ impl Manager {
         }
     }
 
+    /// Convenience function to create the needed data directory
     fn create_data_directory(&self) -> io::Result<()> {
         let segment_path: PathBuf = [
             self.data_directory.to_str().unwrap(),
