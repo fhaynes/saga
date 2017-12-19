@@ -19,6 +19,8 @@ Saga is an indexing and search system similar to ElasticSearch and Lucene. It do
       * [Stores](#stores)
         * [SQLite Store](#sqlite-store)
         * [File Store](#file-store)
+    * [Web](#web)
+    * [Main](#main)
 
 # Design Principals
 Saga has grown out of a desire for an indexing and search solution that is not JVM-based. While powerful and scalable, the operational overhead required to manage large groups of JVM-based services at scale is significant, and our expertise is weighted more toward development. To achieve this, Saga is developed in Rust (https://www.rust-lang.org/) to leverage its speed and safety.
@@ -121,3 +123,9 @@ There is one serious disadvantage, however. SQLite databases can only have one w
 
 #### File Store
 This `Store` serializes data out to local disk. This can be faster than SQLite, but a great deal of the searching, comparison, and other operations must happen in application code as opposed to the database engine.
+
+## Web
+In Progress
+
+## Main
+In Progress
