@@ -3,6 +3,7 @@
     "ace-css": "1.1",
     "css-loader": "^0.28.7",
     "elm-webpack-loader": "^4.4.0",
+    "eslint": "^4.13.1",
     "file-loader": "^1.1.6",
     "font-awesome": "4",
     "foreman": "^2.0.0",
