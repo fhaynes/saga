@@ -13,3 +13,5 @@ Cargo.lock
 **/*.rs.bk
 
 **/*.db
+derby.log
+metastore_db
