@@ -1,16 +1,20 @@
+CARGO = cargo
+
+test: 
+	@$(CARGO) test
+
+release:
+	@$(CARGO) build --release
+	mv target/release/main binaries/saga
+	chmod ugo+x binaries/main
+
+debug:
+	@$(CARGO) build
+	mv target/debug/main binaries/saga
+	chmod ugo+x binaries/main
+
 clean:
-	$(MAKE) -C main clean
-
-release: clean
-	$(MAKE) -C main release
-
-debug: clean
-	$(MAKE) -C main debug
-
-test:
-	$(MAKE) -C main test
-	$(MAKE) -C web test
-	$(MAKE) -C inverted-index test
+	@$(CARGO) clean
 
 install:
-	mv main/binaries/saga /usr/local/bin
+	mv binaries/saga /usr/local/bin

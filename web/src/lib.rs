@@ -1,7 +1,11 @@
+#![feature(plugin, use_extern_macros)]
+#![plugin(tarpc_plugins)]
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+extern crate tarpc;
+
 extern crate futures;
 extern crate hyper;
 extern crate regex;

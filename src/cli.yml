@@ -1,0 +1,28 @@
+name: Saga
+version: "0.0.1"
+author: Fletcher Haynes <fletcher@unity3d.com>
+about: Search!
+args:
+    - verbose:
+        short: v
+        multiple: true
+        help: Sets the level of verbosity
+subcommands:
+    - server:
+        about: Runs the server
+        version: "0.0.1"
+        author: Fletcher Haynes <fletcher@unity3d.com>
+        args:
+          - port:
+              short: p
+              help: port the server should listen on
+          - debug:
+              short: d
+              help: print debug information
+          - metadata:
+              short: m
+              help: starts the server in metadata mode
+          - data:
+              short: a
+              help: starts the server in data mode
+
