@@ -1,25 +1,14 @@
-#![feature(plugin, use_extern_macros)]
-#![plugin(tarpc_plugins)]
-#[macro_use]
-extern crate tarpc;
 #[macro_use]
 extern crate clap;
 extern crate hyper;
 extern crate web;
 extern crate inverted_index;
-extern crate serde;
-
-mod cluster;
 
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
 
 use clap::App;
-
-use tarpc::sync::{server};
-use tarpc::util::{Never};
-use cluster::*;
 
 use hyper::server::Http;
 
@@ -41,14 +30,6 @@ fn main() {
 
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
-
-    let (atx, arx) = mpsc::channel();
-    thread::spawn(move || {
-        let mut handle = cluster::SagaRPCServer.listen("localhost:4000", server::Options::default())
-            .unwrap();
-        atx.send(handle.addr()).unwrap();
-        handle.run();
-    });
 
     let server = Http::new().bind(&addr, || {
         let mut router = router::Router::new();

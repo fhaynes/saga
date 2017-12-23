@@ -5,13 +5,8 @@ authors = ["Fletcher Haynes <fletcher@unity3d.com>"]
 
 [dependencies]
 hyper = "0.11"
-serde = "1.0.24"
-serde_derive = "1.0.24"
-serde_json = "1.0.8"
 futures = "0.1.17"
 clap = { version = "2.29", features = ["yaml"] }
-tarpc = "0.9.0"
-tarpc-plugins = "0.2.0"
 
 inverted_index = { path = "./inverted-index/" }
 web = { path = "./web/" }
