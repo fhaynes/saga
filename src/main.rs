@@ -2,6 +2,7 @@
 #![plugin(tarpc_plugins)]
 #[macro_use]
 extern crate tarpc;
+#[macro_use]
 extern crate clap;
 extern crate hyper;
 extern crate web;
@@ -10,17 +11,15 @@ extern crate serde;
 
 mod cluster;
 
-use std::io;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
-use std::process::exit;
 
 use clap::App;
 
-use tarpc::sync::{client, server};
-use tarpc::sync::client::ClientExt;
-use tarpc::util::{FirstSocketAddr, Never};
+use tarpc::sync::{server};
+use tarpc::util::{Never};
+use cluster::*;
 
 use hyper::server::Http;
 

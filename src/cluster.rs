@@ -11,7 +11,7 @@ service! {
 }
 
 #[derive(Clone)]
-struct SagaRPCServer;
+pub struct SagaRPCServer;
 
 impl SyncService for SagaRPCServer {
     fn heartbeat(&self, id: String) -> Result<String, Never> {
