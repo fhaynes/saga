@@ -22,17 +22,17 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new<S: Into<String>>(ip: S, rpc_port: u16, metadata_server: bool, rx: mpsc::Receiver<Message>, data_path: &str) -> Node {
+    pub fn new<S: Into<String>>(metadata_address: S, metadata_port: u16, metadata_server: bool, rx: mpsc::Receiver<Message>, data_path: &str) -> Node {
         let path = data_path.to_string() + "metadata/";
         let result = fs::create_dir_all(&path);
         let metadata_db: Connection;
         if result.is_err() {
-            println!("Unable to create the director for the metadata database. It will be created in memory.");
+            println!("Unable to create the directory for the metadata database. It will be created in memory.");
             metadata_db = Connection::open_in_memory().unwrap();
         } else {
             metadata_db = Connection::open(&path).unwrap();
         }
-        let ip = ip.into();
+        let metadata_address = metadata_address.into();
 
         let metadata_connection: Option<TcpStream>;
 
@@ -41,9 +41,9 @@ impl Node {
             metadata_connection = None;
 
         } else {
-            match TcpStream::connect(ip.clone() + ":" + &rpc_port.to_string()) {
+            match TcpStream::connect(metadata_address.clone() + ":" + &metadata_port.to_string()) {
                 Ok(conn) => {
-                    println!("Connected to metadata server!");
+                    println!("Connected to metadata server at: {}:{}", metadata_address, metadata_port);
                     metadata_connection = Some(conn);
                 },
                 Err(e) => {
@@ -54,8 +54,8 @@ impl Node {
         }
 
         Node {
-            ip: ip.clone(),
-            rpc_port: rpc_port,
+            ip: metadata_address,
+            rpc_port: metadata_port,
             metadata_server: metadata_server,
             rx: rx,
             db: metadata_db,
@@ -64,8 +64,9 @@ impl Node {
     }
 
     pub fn start_rpc_server<S: Into<String>>(bind_host: S, bind_port: u32, tx: mpsc::Sender<Message>) {
-        println!("Starting RPC server...");
-        let listener = TcpListener::bind(bind_host.into() + ":" + &bind_port.to_string()).unwrap();
+        let bind_host = bind_host.into();
+        println!("Starting RPC server on {}:{}", bind_host, bind_port);
+        let listener = TcpListener::bind(bind_host + ":" + &bind_port.to_string()).unwrap();
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {

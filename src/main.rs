@@ -37,7 +37,9 @@ use web::handlers::health;
 fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
-    let server_matches = matches.subcommand_matches("server").unwrap();
+    let server_matches = matches.subcommand_matches("server");
+    let server_matches = server_matches.unwrap();
+
 
     let (index_manager_tx, index_manager_rx): (mpsc::Sender<manager::IndexCommand>, mpsc::Receiver<manager::IndexCommand>) = mpsc::channel();
     let index_manager = Manager::new("test_idx", PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY), index_manager_rx, StorageEngine::SQLite, shard::ShardType::Primary);
@@ -75,13 +77,22 @@ fn main() {
     let mut my_node = Node::new(metadata_address.clone(), metadata_port.parse::<u16>().unwrap(), am_metadata_server, my_node_rx, data_path);
     MetadataDB::create_cluster_table(&mut my_node.db);
     MetadataDB::create_node_table(&mut my_node.db);
-    Node::start_rpc_server(rpc_address, rpc_port.parse::<u32>().unwrap(), my_node_tx);
+    
+    // Set up the RPC server and start it
+    // TODO: There may be a cleaner way to handle this without so many clones
+    let cloned_rpc_address = rpc_address.to_owned();
+    let cloned_rpc_port = rpc_port.parse::<u32>().unwrap().clone();
+    thread::spawn(move || {
+        Node::start_rpc_server(cloned_rpc_address, cloned_rpc_port, my_node_tx);
+    });
+    
     // Starts the RPC listening loop in a background thread
     thread::spawn(move || {
         my_node.receive_message();                    
     });
     // END
 
+    
     let server = Http::new().bind(&addr, || {
         let mut router = router::Router::new();
         let health_route = router::Route::new("/healthz", hyper::Method::Get, health::health_check).unwrap();
@@ -91,6 +102,7 @@ fn main() {
         };
         Ok(saga)
     }).unwrap();
+    println!("Starting web server on {}:{}", web_address, web_port);
     server.run().unwrap();
 }
 
