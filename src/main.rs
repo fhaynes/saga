@@ -3,8 +3,6 @@ extern crate clap;
 extern crate uuid;
 extern crate rusqlite;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 
 extern crate hyper;
@@ -22,11 +20,10 @@ use hyper::server::Http;
 
 use inverted_index::manager::Manager;
 use inverted_index::manager;
-use inverted_index::constants;
 use inverted_index::shard;
 use inverted_index::manager::StorageEngine;
 
-use rpc::node::Node;
+use rpc::node::{Node, NodeConfiguration};
 use rpc::messages::Message;
 use rpc::db::MetadataDB;
 
@@ -40,9 +37,10 @@ fn main() {
     let server_matches = matches.subcommand_matches("server");
     let server_matches = server_matches.unwrap();
 
+    let data_path = server_matches.value_of("data_path").unwrap_or("/tmp/saga/");
 
-    let (index_manager_tx, index_manager_rx): (mpsc::Sender<manager::IndexCommand>, mpsc::Receiver<manager::IndexCommand>) = mpsc::channel();
-    let index_manager = Manager::new("test_idx", PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY), index_manager_rx, StorageEngine::SQLite, shard::ShardType::Primary);
+    let (_index_manager_tx, index_manager_rx): (mpsc::Sender<manager::IndexCommand>, mpsc::Receiver<manager::IndexCommand>) = mpsc::channel();
+    let _index_manager = Manager::new("test_idx", PathBuf::from(data_path), index_manager_rx, StorageEngine::SQLite, shard::ShardType::Primary);
     
     let metadata_address: &str;
     let metadata_port: &str;
@@ -74,7 +72,15 @@ fn main() {
     // Set up the Node struct for this server
     // TODO: This should be broken out into a function somewhere
     let (my_node_tx, my_node_rx): (mpsc::Sender<Message>, mpsc::Receiver<Message>) = mpsc::channel();
-    let mut my_node = Node::new(metadata_address.clone(), metadata_port.parse::<u16>().unwrap(), am_metadata_server, Arc::new(Mutex::new(my_node_rx)), data_path);
+    let my_node_config = NodeConfiguration {
+        metadata_address: metadata_address.into(),
+        metadata_port: metadata_port.parse::<u16>().unwrap(),
+        data_path: data_path.to_owned(),
+        am_metadata_server: am_metadata_server,
+        rx: Arc::new(Mutex::new(my_node_rx))
+    };
+
+    let mut my_node = Node::new(my_node_config);
     MetadataDB::create_cluster_table(&mut my_node.db);
     MetadataDB::create_node_table(&mut my_node.db);
     
@@ -107,7 +113,7 @@ fn main() {
         my_node.receive_message();                    
     });
     // END
-    
+
     let server = Http::new().bind(&addr, || {
         let mut router = router::Router::new();
         let health_route = router::Route::new("/healthz", hyper::Method::Get, health::health_check).unwrap();
@@ -120,9 +126,4 @@ fn main() {
     }).unwrap();
     println!("Starting web server on {}:{}", web_address, web_port);
     server.run().unwrap();
-}
-
-struct Switchboard {
-    index_manager_tx: Arc<Mutex<mpsc::Sender<manager::IndexCommand>>>,
-    my_node_tx: Arc<Mutex<mpsc::Sender<Message>>>
 }
