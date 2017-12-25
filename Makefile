@@ -11,7 +11,8 @@ release:
 debug:
 	@$(CARGO) build
 	mv target/debug/main binaries/saga
-	chmod ugo+x binaries/main
+	chmod ugo+x binaries/saga
+	mv binaries/saga /usr/local/bin
 
 clean:
 	@$(CARGO) clean
