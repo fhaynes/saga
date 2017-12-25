@@ -1,8 +1,5 @@
 #[macro_use]
 extern crate clap;
-extern crate hyper;
-extern crate web;
-extern crate inverted_index;
 extern crate uuid;
 extern crate rusqlite;
 extern crate serde;
@@ -10,14 +7,17 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-mod rpc;
+extern crate hyper;
+extern crate web;
+extern crate inverted_index;
+extern crate rpc;
 
 use std::path::PathBuf;
-use std::sync::mpsc;
+use std::time;
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use clap::App;
-
 use hyper::server::Http;
 
 use inverted_index::manager::Manager;
@@ -74,7 +74,7 @@ fn main() {
     // Set up the Node struct for this server
     // TODO: This should be broken out into a function somewhere
     let (my_node_tx, my_node_rx): (mpsc::Sender<Message>, mpsc::Receiver<Message>) = mpsc::channel();
-    let mut my_node = Node::new(metadata_address.clone(), metadata_port.parse::<u16>().unwrap(), am_metadata_server, my_node_rx, data_path);
+    let mut my_node = Node::new(metadata_address.clone(), metadata_port.parse::<u16>().unwrap(), am_metadata_server, Arc::new(Mutex::new(my_node_rx)), data_path);
     MetadataDB::create_cluster_table(&mut my_node.db);
     MetadataDB::create_node_table(&mut my_node.db);
     
@@ -82,22 +82,38 @@ fn main() {
     // TODO: There may be a cleaner way to handle this without so many clones
     let cloned_rpc_address = rpc_address.to_owned();
     let cloned_rpc_port = rpc_port.parse::<u32>().unwrap().clone();
+    let cloned_my_node_tx = Arc::new(Mutex::new(my_node_tx));
     thread::spawn(move || {
-        Node::start_rpc_server(cloned_rpc_address, cloned_rpc_port, my_node_tx);
+        Node::start_rpc_server(cloned_rpc_address, cloned_rpc_port, cloned_my_node_tx.clone());
     });
     
+
+
+    // If we aren't the metadata server, we need to establish a connection and register with the
+    // metadata server
+    if !am_metadata_server {
+        loop {
+            if my_node.register_with_metadata_server().is_err() {
+                    println!("There was an error registering with the metadata server! Will sleep 5 seconds and retry");
+                    thread::sleep(time::Duration::from_millis(5000));
+            } else {
+                break;
+            }
+        }
+    }
+
     // Starts the RPC listening loop in a background thread
     thread::spawn(move || {
         my_node.receive_message();                    
     });
     // END
-
     
     let server = Http::new().bind(&addr, || {
         let mut router = router::Router::new();
         let health_route = router::Route::new("/healthz", hyper::Method::Get, health::health_check).unwrap();
         router.add_route(health_route);
         let saga = Saga{
+            //metadata_db: &Connection,
             router: router
         };
         Ok(saga)
@@ -107,6 +123,6 @@ fn main() {
 }
 
 struct Switchboard {
-    index_manager_tx: mpsc::Sender<manager::IndexCommand>,
-    my_node_tx: mpsc::Sender<Message>
+    index_manager_tx: Arc<Mutex<mpsc::Sender<manager::IndexCommand>>>,
+    my_node_tx: Arc<Mutex<mpsc::Sender<Message>>>
 }

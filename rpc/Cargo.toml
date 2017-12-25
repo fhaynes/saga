@@ -1,13 +1,12 @@
 [package]
-name = "web"
+name = "rpc"
 version = "0.1.0"
 authors = ["Fletcher Haynes <fletcher@unity3d.com>"]
 
 [dependencies]
+uuid = { version = "0.5", features = ["v4", "serde"] }
 serde = "1.0.24"
 serde_derive = "1.0.24"
 serde_json = "1.0.8"
-futures = "0.1.17"
-hyper = "0.11"
-regex = "0.2"
 rusqlite = "0.13.0"
+

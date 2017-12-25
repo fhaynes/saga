@@ -15,4 +15,5 @@ rusqlite = "0.13.0"
 
 inverted_index = { path = "./inverted-index/" }
 web = { path = "./web/" }
+rpc = { path = "./rpc/" }
 

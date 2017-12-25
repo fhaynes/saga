@@ -1,3 +1,10 @@
+extern crate rusqlite;
+extern crate uuid;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
+
 pub mod messages;
 pub mod node;
 pub mod db;

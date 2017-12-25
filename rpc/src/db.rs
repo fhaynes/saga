@@ -11,7 +11,11 @@ pub const QUERY_CREATE_NODE_TABLE: &'static str = "CREATE TABLE IF NOT EXISTS no
         name            TEXT
     )";
 
-pub struct MetadataDB;
+pub const QUERY_LIST_NODES: &'static str = "SELECT id FROM nodes";
+
+pub struct MetadataDB {
+    conn: Connection,
+}
 
 impl MetadataDB {
     pub fn create_cluster_table(conn: &Connection) {
@@ -34,5 +38,20 @@ impl MetadataDB {
                 println!("There was an error creating the node table: {:?}", e);
             },
         }
+    }
+
+    pub fn list_nodes(conn: &Connection) -> Vec<String> {
+        let mut results = vec![];
+        let mut stmt = conn.prepare(QUERY_LIST_NODES).unwrap();
+
+        let node_iter = stmt.query_map(&[], |row| {
+            row.get(0)
+        }).unwrap();
+
+        for node in node_iter {
+            results.push(node.unwrap());
+        }
+        results
+
     }
 }

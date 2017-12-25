@@ -1,11 +1,11 @@
-use rpc::messages::{Message, MessageType};
+use messages::{Message, MessageType};
 
-use std::io::{Read};
+use std::io::{Read,Write};
 use std::net::{TcpListener, TcpStream};
 use std::{thread, time, fs};
-
+use std::error::Error;
+use std::fmt;
 use std::sync::{Arc, Mutex, mpsc};
-use std::path::Path;
 
 use uuid::Uuid;
 use rusqlite::Connection;
@@ -13,18 +13,19 @@ use serde_json;
 
 /// Node is an individual server within a Cluster
 pub struct Node {
-    ip: String,
-    rpc_port: u16,
     metadata_server: bool,
-    rx: mpsc::Receiver<Message>,
+    rx: Arc<Mutex<mpsc::Receiver<Message>>>,
     pub db: Connection,
+    metadata_address: String,
+    metadata_port: u16,
     pub metadata_connection: Option<TcpStream>
 }
 
 impl Node {
-    pub fn new<S: Into<String>>(metadata_address: S, metadata_port: u16, metadata_server: bool, rx: mpsc::Receiver<Message>, data_path: &str) -> Node {
+    pub fn new<S: Into<String>>(metadata_address: S, metadata_port: u16, metadata_server: bool, rx: Arc<Mutex<mpsc::Receiver<Message>>>, data_path: &str) -> Node {
         let path = data_path.to_string() + "metadata/";
         let result = fs::create_dir_all(&path);
+
         let metadata_db: Connection;
         if result.is_err() {
             println!("Unable to create the directory for the metadata database. It will be created in memory.");
@@ -54,23 +55,23 @@ impl Node {
         }
 
         Node {
-            ip: metadata_address,
-            rpc_port: metadata_port,
             metadata_server: metadata_server,
             rx: rx,
             db: metadata_db,
-            metadata_connection: metadata_connection
+            metadata_connection: metadata_connection,
+            metadata_address: metadata_address.clone(),
+            metadata_port: metadata_port,
         }
     }
 
-    pub fn start_rpc_server<S: Into<String>>(bind_host: S, bind_port: u32, tx: mpsc::Sender<Message>) {
+    pub fn start_rpc_server<S: Into<String>>(bind_host: S, bind_port: u32, tx: Arc<Mutex<mpsc::Sender<Message>>>) {
         let bind_host = bind_host.into();
         println!("Starting RPC server on {}:{}", bind_host, bind_port);
         let listener = TcpListener::bind(bind_host + ":" + &bind_port.to_string()).unwrap();
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    let new_tx = Arc::new(Mutex::new(tx.clone()));
+                    let new_tx = tx.clone();
                     thread::spawn(move || {
                         Node::handle_client(stream, new_tx);
                     });
@@ -130,7 +131,7 @@ impl Node {
 
     pub fn receive_message(&mut self) {
         loop {
-            let msg = self.rx.recv();
+            let msg = self.rx.lock().unwrap().recv();
             if msg.is_err() {
                 println!("Error receiving RPC message!");
                 continue;
@@ -155,7 +156,7 @@ impl Node {
         
     }
 
-    fn register_with_metadata_server(&self) {
+    pub fn register_with_metadata_server(&mut self) -> Result<(), NodeError> {
         let registration_message = Message{
             message_type: MessageType::REGISTER,
             message_id: Uuid::new_v4(),
@@ -163,7 +164,72 @@ impl Node {
             arguments: vec![]
         };
 
+        let serialized_message = serde_json::to_vec(&registration_message)?;
+        match self.metadata_connection {
+            Some(ref mut conn) => {
+                match conn.write(&serialized_message) {
+                    Ok(r) => {
+                        Ok(())
+                    },
+                    Err(e) => {
+                        Err(NodeError::new(&format!("Error writing to metadata conn: {}", e)))
+                    },
+                }
+            },
+            None => {
+                match TcpStream::connect(self.metadata_address.clone() + ":" + &self.metadata_port.to_string()) {
+                    Ok(conn) => {
+                        println!("Connected to metadata server at: {}:{}", self.metadata_address, self.metadata_port);
+                        self.metadata_connection = Some(conn);
+                    },
+                    Err(e) => {
+                        println!("There was an error connecting to the metadata server: {:?}", e);
+                        self.metadata_connection = None;
+                    },
+                };
+                Err(NodeError::new("Error with connection to metadata server. Attempting reconnect..."))
+            }
+        }
+    }
+}
 
+#[derive(Debug)]
+pub struct NodeError {
+    details: String
+}
 
+impl NodeError {
+    /// Creates and returns a new DocumentError
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - The error message we want to include in the DocumentError
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rpc::node::NodeError;
+    /// let node_error = NodeError::new("Error with Node!");
+    /// ```
+    pub fn new(msg: &str) -> NodeError {
+        NodeError { details: msg.to_string() }
+    }
+}
+
+impl fmt::Display for NodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for NodeError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
+impl From<serde_json::Error> for NodeError {
+    fn from(err: serde_json::Error) -> NodeError {
+        NodeError::new(&err.to_string())
     }
 }
