@@ -42,9 +42,14 @@ fn main() {
     let (index_manager_tx, index_manager_rx): (mpsc::Sender<manager::IndexCommand>, mpsc::Receiver<manager::IndexCommand>) = mpsc::channel();
     let index_manager = Manager::new("test_idx", PathBuf::from(constants::TEST_DEFAULT_DATA_DIRECTORY), index_manager_rx, StorageEngine::SQLite, shard::ShardType::Primary);
     
-    let my_ip = String::from("127.0.0.1");
-    let my_web_port = "3000";
-    let my_rpc_port = 3001;
+    let metadata_address: &str;
+    let metadata_port: &str;
+
+    let web_address: &str;
+    let web_port: &str;
+
+    let rpc_address: &str;
+    let rpc_port: &str;
     
     let am_metadata_server: bool;
     if server_matches.is_present("metadata") {
@@ -53,16 +58,24 @@ fn main() {
         am_metadata_server = false;
     }
 
+    metadata_address = server_matches.value_of("metadata_address").unwrap_or("127.0.0.1");
+    metadata_port = server_matches.value_of("metadata_port").unwrap_or("3000");
+    rpc_address = server_matches.value_of("rpc_address").unwrap_or("127.0.0.1");
+    rpc_port = server_matches.value_of("rpc_port").unwrap_or("3001");
+    web_address = server_matches.value_of("web_address").unwrap_or("127.0.0.1");
+    web_port = server_matches.value_of("web_port").unwrap_or("2999");
+
     let data_path: &str = server_matches.value_of("data_dir").unwrap_or("/tmp");
 
-    let addr = (my_ip.clone() + ":" + my_web_port).parse().unwrap();
+    let addr = (web_address.to_owned() + ":" + web_port).parse().unwrap();
 
     // Set up the Node struct for this server
+    // TODO: This should be broken out into a function somewhere
     let (my_node_tx, my_node_rx): (mpsc::Sender<Message>, mpsc::Receiver<Message>) = mpsc::channel();
-    let mut my_node = Node::new(my_ip.clone(), my_rpc_port, am_metadata_server, my_node_rx, data_path);
+    let mut my_node = Node::new(metadata_address.clone(), metadata_port.parse::<u16>().unwrap(), am_metadata_server, my_node_rx, data_path);
     MetadataDB::create_cluster_table(&mut my_node.db);
     MetadataDB::create_node_table(&mut my_node.db);
-    Node::start_rpc_server(my_ip, my_rpc_port as u32, my_node_tx);
+    Node::start_rpc_server(rpc_address, rpc_port.parse::<u32>().unwrap(), my_node_tx);
     // Starts the RPC listening loop in a background thread
     thread::spawn(move || {
         my_node.receive_message();                    

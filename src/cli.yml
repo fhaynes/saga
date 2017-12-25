@@ -1,28 +1,63 @@
 name: Saga
-version: "0.0.1"
+version: 0.0.1
 author: Fletcher Haynes <fletcher@unity3d.com>
 about: Search!
 args:
-    - verbose:
-        short: v
-        multiple: true
-        help: Sets the level of verbosity
+    -
+        verbose:
+            short: v
+            multiple: true
+            help: Sets the level of verbosity
 subcommands:
-    - server:
-        about: Runs the server
-        version: "0.0.1"
-        author: Fletcher Haynes <fletcher@unity3d.com>
-        args:
-          - port:
-              short: p
-              help: port the server should listen on
-          - debug:
-              short: d
-              help: print debug information
-          - metadata:
-              short: m
-              help: starts the server in metadata mode
-          - data:
-              short: a
-              help: starts the server in data mode
-
+    -
+        server:
+            about: Runs the server
+            version: 0.0.1
+            author: Fletcher Haynes <fletcher@unity3d.com>
+            args:
+                -
+                    port:
+                        short: p
+                        help: port the server should listen on
+                -
+                    debug:
+                        short: d
+                        help: print debug information
+                -
+                    metadata:
+                        short: m
+                        help: starts the server in metadata mode
+                -
+                    data:
+                        short: a
+                        help: starts the server in data mode
+                -
+                    rpc_address:
+                        long: rpc_address
+                        help: Sets the RPC server address
+                        takes_value: true
+                -
+                    rpc_port:
+                        long: rpc_port
+                        help: Sets the RPC server port
+                        takes_value: true
+                -
+                    metadata_address:
+                        long: metadata_address
+                        help: Sets the address of the metadata server. Do not use unless this server is not the metadata server.
+                        takes_value: true
+                -
+                    metadata_port:
+                        long: metadata_port
+                        help: Sets the port of the metadata port. Do not use unless this server is not the metadata server.
+                        takes_value: true
+                -
+                    web_address:
+                        long: web_address
+                        help: Sets the address of the web server.
+                        takes_value: true
+                -
+                    web_port:
+                        long: web_port
+                        help: Sets the port of the web port.
+                        takes_value: true

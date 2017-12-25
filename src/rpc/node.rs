@@ -2,12 +2,12 @@ use rpc::messages::{Message, MessageType};
 
 use std::io::{Read};
 use std::net::{TcpListener, TcpStream};
-use std::thread;
-use std::fs;
+use std::{thread, time, fs};
 
 use std::sync::{Arc, Mutex, mpsc};
 use std::path::Path;
 
+use uuid::Uuid;
 use rusqlite::Connection;
 use serde_json;
 
@@ -17,7 +17,8 @@ pub struct Node {
     rpc_port: u16,
     metadata_server: bool,
     rx: mpsc::Receiver<Message>,
-    pub db: Connection
+    pub db: Connection,
+    pub metadata_connection: Option<TcpStream>
 }
 
 impl Node {
@@ -31,13 +32,34 @@ impl Node {
         } else {
             metadata_db = Connection::open(&path).unwrap();
         }
+        let ip = ip.into();
+
+        let metadata_connection: Option<TcpStream>;
+
+        // TODO: This should be factored out into a function
+        if metadata_server {
+            metadata_connection = None;
+
+        } else {
+            match TcpStream::connect(ip.clone() + ":" + &rpc_port.to_string()) {
+                Ok(conn) => {
+                    println!("Connected to metadata server!");
+                    metadata_connection = Some(conn);
+                },
+                Err(e) => {
+                    println!("There was an error connecting to the metadata server: {:?}", e);
+                    metadata_connection = None;
+                },
+            };
+        }
 
         Node {
-            ip: ip.into(),
+            ip: ip.clone(),
             rpc_port: rpc_port,
             metadata_server: metadata_server,
             rx: rx,
             db: metadata_db,
+            metadata_connection: metadata_connection
         }
     }
 
@@ -130,5 +152,17 @@ impl Node {
 
     fn handle_register(arguments: &Vec<String>) {
         
+    }
+
+    fn register_with_metadata_server(&self) {
+        let registration_message = Message{
+            message_type: MessageType::REGISTER,
+            message_id: Uuid::new_v4(),
+            creation_time: time::SystemTime::now(),
+            arguments: vec![]
+        };
+
+
+
     }
 }
