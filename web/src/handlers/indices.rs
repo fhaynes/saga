@@ -4,7 +4,6 @@ use serde_json;
 use futures::Stream;
 use futures::Future;
 
-use handlers::constants;
 use rpc::Switchboard;
 
 /// Handles the request to create a new index
