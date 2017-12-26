@@ -9,10 +9,6 @@ use rpc::Switchboard;
 
 /// Handles the request to create a new index
 pub fn create_index(req: Request, swb: Arc<Mutex<Switchboard>>) -> Response {
-//    req.body().concat2()
-//        .and_then(|body| {
-//            let stringify = str::from_utf8(&body).unwrap();
-//        });
     Response::new()
 }
 

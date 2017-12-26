@@ -2,19 +2,24 @@
 use std::error::Error;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use regex::Regex;
 
 use hyper::Method;
 use hyper::server::{Request, Response};
+use regex::Regex;
 
 use rpc::Switchboard;
 
+/// Convenience type alias for `Response`
 type ResponseFuture = Response;
+
+/// Convenience type alias for Handlers, so we don't have to keep writing out the long type
 type Handler = fn(Request, Arc<Mutex<Switchboard>>) -> ResponseFuture;
 
 /// Router accepts components of an HTTP request and tries to find the appropriate function to handle it
 pub struct Router {
+    /// Holds child routers, not currently used
     child_routers: Vec<Router>,
+    /// Holds the registered routes
     routes: Vec<Route>,
 }
 
@@ -59,6 +64,7 @@ impl Route {
         )
     }
 
+    /// Goes through all the registered routes and returns a Handler if one is found that matches
     fn is_match(&self, verb: &Method, path: &str) -> Option<Handler> {
         if self.verb != *verb {
             return None;
