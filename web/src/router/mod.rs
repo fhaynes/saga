@@ -1,15 +1,16 @@
 
 use std::error::Error;
 use std::fmt;
-
-use futures::future::Future;
+use std::sync::{Arc, Mutex};
 use regex::Regex;
 
 use hyper::Method;
 use hyper::server::{Request, Response};
 
+use rpc::Switchboard;
+
 type ResponseFuture = Response;
-type Handler = fn(Request) -> ResponseFuture;
+type Handler = fn(Request, Arc<Mutex<Switchboard>>) -> ResponseFuture;
 
 /// Router accepts components of an HTTP request and tries to find the appropriate function to handle it
 pub struct Router {

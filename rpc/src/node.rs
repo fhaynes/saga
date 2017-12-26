@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use serde_json;
 
 use messages::{Message, MessageType};
+use db::MetadataDB;
 
 /// Node is an individual server within a Cluster
 pub struct Node {
@@ -22,6 +23,8 @@ pub struct Node {
 /// Contains the configuration data for creating a new Node
 /// This is used due to Node needed so many parameters
 pub struct NodeConfiguration {
+    /// Name of the node
+    pub name: String,
     /// Address of the metadata server we are going to connect to
     pub metadata_address: String,
     /// Path on the local machine that should be used for data. Primarily used
@@ -33,6 +36,10 @@ pub struct NodeConfiguration {
     pub am_metadata_server: bool,
     /// Channel for this Node to listen for Messages
     pub rx: Arc<Mutex<mpsc::Receiver<Message>>>,
+    /// The address that this node will listen on for RPC connections
+    pub rpc_address: String,
+    /// The port that this node will listen on for RPC connections
+    pub rpc_port: u16
 }
 
 
@@ -71,7 +78,7 @@ impl Node {
                 },
                 Err(e) => {
                     println!("There was an error opening the on-disk database: {:?}. It will be created in memory.", e);
-                    Connection::open_in_memory().unwrap()
+                   Connection::open_in_memory().unwrap()
                 }
             };
         }
@@ -101,6 +108,7 @@ impl Node {
             metadata_connection: metadata_connection,
         }
     }
+
 
     /// Starts the RPC server for a `Node`. This binds to a port and listens for messages from other
     /// Nodes on the network. When it gets one, it deserializes it and sends it to a handler via
@@ -157,17 +165,17 @@ impl Node {
                             match tx.lock() {
                                 Ok(l) => {
                                     match l.send(message) {
-                                        Ok(r) => {
+                                        Ok(_) => {
                                             continue;
                                         },
                                         Err(e) => {
-                                            println!("There was an error sending the deserialized message");
+                                            println!("There was an error sending the deserialized message: {}", e);
                                             continue;
                                         },
                                     }
                                 },
                                 Err(e) => {
-                                    println!("There was an error acquring lock on tx to send Message");
+                                    println!("There was an error acquring lock on tx to send Message: {}", e);
                                     continue;
                                 },
                             }
@@ -177,8 +185,6 @@ impl Node {
                             continue;
                         },
                     };
-                    
-                    
                 }
                 Err(err) => {
                     panic!(err);
@@ -198,10 +204,16 @@ impl Node {
             let msg = lock.recv().unwrap();
             match msg.message_type {
                 MessageType::HEARTBEAT => {
-                    self.handle_heartbeat(&vec![]);
+                    self.handle_heartbeat(&msg.args);
                 },
                 MessageType::REGISTER => {
-                    self.handle_register(&vec![]);
+                    self.handle_register(&msg.args);
+                },
+                MessageType::LIST_NODES => {
+                    let nodes = self.handle_list_nodes(&msg.args);
+                    let response = Message::new(MessageType::LIST_NODES).args(nodes);
+                    msg.response_chan.unwrap().send(response);
+                    continue;
                 },
                 MessageType::SHUTDOWN => {
                     println!("Shutting down...");
@@ -211,16 +223,32 @@ impl Node {
         }
     }
 
+    fn handle_list_nodes(&mut self, arguments: &Vec<String>) -> Vec<String> {
+        MetadataDB::list_nodes(&self.db)
+    }
+
     fn handle_heartbeat(&mut self, arguments: &Vec<String>) {
 
     }
 
     fn handle_register(&mut self, arguments: &Vec<String>) {
-        
+        println!("Received a registration request from: {:?}", arguments);
+        match MetadataDB::register_node(&self.db, &arguments[0], &arguments[1], arguments[2].parse::<u16>().unwrap()) {
+            true => {
+                println!("Node registered!");
+            },
+            false => {
+                println!("Node failed to register!");
+            }
+        }
     }
 
+    /// Creates a Registration `Message` and sends it to the metadata server so we can join the cluster
     pub fn register_with_metadata_server(&mut self) -> Result<(), NodeError> {
-        let serialized_message = Message::new(MessageType::REGISTER).to_vec()?;
+        let serialized_message = Message::new(MessageType::REGISTER).args(
+                vec![self.config.name.clone(), self.config.rpc_address.clone(), self.config.rpc_port.to_string()]
+            ).to_vec()?;
+
         match self.metadata_connection {
             Some(ref mut conn) => {
                 match conn.write(&serialized_message) {
@@ -302,11 +330,14 @@ mod tests {
         let (_my_node_tx, my_node_rx): (mpsc::Sender<Message>, mpsc::Receiver<Message>) = mpsc::channel();
 
         let new_config = NodeConfiguration {
+            name: String::from("test01"),
             metadata_address: String::from("localhost"),
             data_path: String::from("memory"),
             metadata_port: 5000,
             am_metadata_server: true,
-            rx: Arc::new(Mutex::new(my_node_rx))
+            rx: Arc::new(Mutex::new(my_node_rx)),
+            rpc_address: String::from("localhost"),
+            rpc_port: 5001
         };
 
         let mut new_node = Node::new(new_config);
@@ -318,11 +349,14 @@ mod tests {
         let (_my_node_tx, my_node_rx): (mpsc::Sender<Message>, mpsc::Receiver<Message>) = mpsc::channel();
 
         let new_config = NodeConfiguration {
+            name: String::from("test02"),
             metadata_address: String::from("localhost"),
             data_path: String::from("memory"),
             metadata_port: 5000,
             am_metadata_server: true,
-            rx: Arc::new(Mutex::new(my_node_rx))
+            rx: Arc::new(Mutex::new(my_node_rx)),
+            rpc_address: String::from("localhost"),
+            rpc_port: 5001
         };
 
         let mut new_node = Node::new(new_config);

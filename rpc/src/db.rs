@@ -7,15 +7,16 @@ pub const QUERY_CREATE_CLUSTER_TABLE: &'static str = "CREATE TABLE IF NOT EXISTS
     )";
 
 pub const QUERY_CREATE_NODE_TABLE: &'static str = "CREATE TABLE IF NOT EXISTS nodes (
-        id              TEXT PRIMARY KEY NOT NULL,
-        name            TEXT
+        name            TEXT PRIMARY KEY NOT NULL,
+        host            TEXT NOT NULL,
+        port            INT NOT NULL
     )";
 
-pub const QUERY_LIST_NODES: &'static str = "SELECT id FROM nodes";
+pub const QUERY_LIST_NODES: &'static str = "SELECT name FROM nodes";
 
-pub struct MetadataDB {
-    conn: Connection,
-}
+pub const QUERY_REGISTER_NODE: &'static str = "INSERT OR IGNORE INTO nodes VALUES (?, ?, ?)";
+
+pub struct MetadataDB;
 
 impl MetadataDB {
     pub fn create_cluster_table(conn: &Connection) {
@@ -37,6 +38,18 @@ impl MetadataDB {
             Err(e) => {
                 println!("There was an error creating the node table: {:?}", e);
             },
+        }
+    }
+
+    pub fn register_node(conn: &Connection, name: &str, hostname: &str, port: u16) -> bool {
+        match conn.execute(QUERY_REGISTER_NODE, &[&name, &hostname, &port]) {
+            Ok(c) => {
+                true
+            },
+            Err(e) => {
+                println!("There was an error registering a node: {}", e);
+                false
+            }
         }
     }
 

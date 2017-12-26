@@ -6,16 +6,23 @@ extern crate futures;
 extern crate hyper;
 extern crate regex;
 extern crate rusqlite;
+extern crate rpc; 
 
 pub mod handlers;
 pub mod router;
 
+use std::sync::mpsc;
+use std::sync::{Arc,Mutex};
 use futures::future::Future;
+
 use hyper::server::{Request, Response, Service};
 use hyper::StatusCode;
 
+use rpc::messages::Message;
+
 pub struct Saga {
-    pub router: router::Router
+    pub router: router::Router,
+    pub config: ServiceConfiguration
 }
 
 impl Service for Saga {
@@ -28,7 +35,7 @@ impl Service for Saga {
         match self.router.route(req.method(), req.path()) {
             Some(h) => {
                 Box::new(futures::future::ok(
-                    h(req)
+                    h(req, self.config.switchboard.clone())
                 ))
             },
             None => {
@@ -40,3 +47,16 @@ impl Service for Saga {
     }
 }
 
+pub struct ServiceConfiguration {
+    pub data_path: String,
+    pub switchboard: Arc<Mutex<rpc::Switchboard>>,
+}
+
+impl ServiceConfiguration {
+    pub fn new(data_path: String, switchboard: Arc<Mutex<rpc::Switchboard>>) -> ServiceConfiguration {
+        ServiceConfiguration {
+            data_path: data_path,
+            switchboard: switchboard
+        }
+    }
+}

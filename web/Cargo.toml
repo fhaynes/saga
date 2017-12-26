@@ -11,3 +11,4 @@ futures = "0.1.17"
 hyper = "0.11"
 regex = "0.2"
 rusqlite = "0.13.0"
+rpc = { path = "../rpc" }

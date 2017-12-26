@@ -9,6 +9,8 @@ pub mod messages;
 pub mod node;
 pub mod db;
 
+use std::sync::{Arc,Mutex,mpsc};
+
 /// Cluster represents a collection of Nodes
 pub struct Cluster {
     name: String
@@ -24,3 +26,15 @@ impl Cluster {
     }
 }
 
+/// Struct that holds Channels to various entities. 
+pub struct Switchboard {
+    pub node_tx: Arc<Mutex<mpsc::Sender<messages::Message>>>,
+}
+
+impl Switchboard {
+    pub fn new(node_tx: Arc<Mutex<mpsc::Sender<messages::Message>>>) -> Switchboard {
+        Switchboard{
+            node_tx: node_tx,
+        }
+    }
+}

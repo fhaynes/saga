@@ -1,12 +1,14 @@
+use std::sync::{Arc, Mutex};
 use hyper::{Request, Response, Body, Chunk};
 use serde_json;
 use futures::Stream;
 use futures::Future;
 
 use handlers::constants;
+use rpc::Switchboard;
 
 /// Handles the request to create a new index
-pub fn create_index(req: Request) -> Response {
+pub fn create_index(req: Request, swb: Arc<Mutex<Switchboard>>) -> Response {
 //    req.body().concat2()
 //        .and_then(|body| {
 //            let stringify = str::from_utf8(&body).unwrap();

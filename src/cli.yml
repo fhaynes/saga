@@ -24,6 +24,11 @@ subcommands:
                         short: d
                         help: print debug information
                 -
+                    name:
+                        long: name
+                        help: sets the name of the node. If not set, a random UUID will be chosen.
+                        takes_value: true
+                -
                     metadata:
                         short: m
                         help: starts the server in metadata mode

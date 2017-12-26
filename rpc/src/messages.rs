@@ -2,20 +2,25 @@ use std::time;
 
 use serde_json;
 use uuid::Uuid;
+use std::sync::mpsc;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum MessageType {
     HEARTBEAT,
     REGISTER,
+    LIST_NODES,
     SHUTDOWN,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
     pub message_type: MessageType,
     pub message_id: Uuid,
     pub creation_time: time::SystemTime,
-    pub args: Vec<String>
+    pub args: Vec<String>,
+    
+    #[serde(skip_serializing, skip_deserializing)]
+    pub response_chan: Option<mpsc::Sender<Message>>
 }
 
 impl Message {
@@ -24,7 +29,8 @@ impl Message {
             message_type: mt,
             message_id: Uuid::new_v4(),
             creation_time: time::SystemTime::now(),
-            args: vec![]
+            args: vec![],
+            response_chan: None
         }
     }
 
@@ -35,6 +41,11 @@ impl Message {
 
     pub fn args(mut self, mut args: Vec<String>) -> Message {
         self.args.append(&mut args);
+        self
+    }
+
+    pub fn response_chan(mut self, chan: mpsc::Sender<Message>) -> Message {
+        self.response_chan = Some(chan);
         self
     }
 
