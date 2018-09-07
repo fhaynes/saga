@@ -2,7 +2,7 @@
 Saga is an indexing and search system similar to ElasticSearch and Lucene. It does not attempt to be as broad in scope as those tools, but instead implement a needed subset of their functionality that can be expanded upon interatively.
 
 ## Contacts
-* Fletcher Haynes \<fletcher@unity3d.com\>
+* Fletcher Haynes \<fletcher@subnetzero.io\>
 
 # Table of Contents
 
@@ -32,7 +32,7 @@ Our high-level design principals for this project are:
 * Speed
 * Horizontally Scalable
 
-Each of these principals will be covered in more detail in tihs document. 
+Each of these principals will be covered in more detail in tihs document.
 
 # Components
 This section covers the major components of Saga.
@@ -75,7 +75,7 @@ If the user later searches for the term "molar", it should return this document.
 Documents are received via the JSON API that Saga's web component provides. Two primary forms of submission are accepted:
 
 **JSON**
-If a valid JSON document is submitted to Saga, all the keys are extracted and the corresponding values indexed. 
+If a valid JSON document is submitted to Saga, all the keys are extracted and the corresponding values indexed.
 
 **Plain Text**
 In this case, the user has submitted a string of raw text, perhaps via something like:
@@ -84,7 +84,7 @@ In this case, the user has submitted a string of raw text, perhaps via something
 curl -XPOST -H "Content-Type: text/plain" http://example.com/<index_name>/document -d "Who wouldn't want to be a molar bear?"
 ```
 
-Since this is not JSON, the text will be put into a field named `message`, and indexed. 
+Since this is not JSON, the text will be put into a field named `message`, and indexed.
 
 ### Indices
 An Index is a logical collection of Documents that has the following properties:
