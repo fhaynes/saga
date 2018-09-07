@@ -1,6 +1,5 @@
-image: "rust:1.22.1-jessie"
+image: "rust:latest"
 test:cargo:
   script:
     - rustc --version && cargo --version      # Print version info for debugging
     - make test
-    
