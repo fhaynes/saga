@@ -42,7 +42,7 @@ fn main() {
 
     let (_index_manager_tx, index_manager_rx): (mpsc::Sender<manager::IndexCommand>, mpsc::Receiver<manager::IndexCommand>) = mpsc::channel();
     let _index_manager = Manager::new("test_idx", PathBuf::from(data_path), index_manager_rx, StorageEngine::SQLite, shard::ShardType::Primary);
-    
+
     let metadata_address: &str;
     let metadata_port: &str;
 
@@ -51,7 +51,7 @@ fn main() {
 
     let rpc_address: &str;
     let rpc_port: &str;
-    
+
     let am_metadata_server: bool;
     if server_matches.is_present("metadata") {
         am_metadata_server = true;
@@ -100,7 +100,7 @@ fn main() {
     thread::spawn(move || {
         Node::start_rpc_server(cloned_rpc_address, cloned_rpc_port, cloned_my_node_tx.clone());
     });
-    
+
     // If we aren't the metadata server, we need to establish a connection and register with the
     // metadata server
     if !am_metadata_server {
@@ -116,19 +116,19 @@ fn main() {
 
     // Starts the RPC listening loop in a background thread
     thread::spawn(move || {
-        my_node.receive_message();                    
+        my_node.receive_message();
     });
     // END
 
-    let swb = 
+    let swb =
         Arc::new(
             Mutex::new(
                 rpc::Switchboard::new(my_node_tx.clone())
             )
         );
-    
+
     // Configure and start up the web server
-    
+
     let cloned_data_path = data_path.to_owned();
     let server = Http::new().bind(&addr, move || {
         let mut router = router::Router::new();
